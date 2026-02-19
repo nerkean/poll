@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>TERMINAL: DATA_VIEWER</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg: #000; --text: #fff; }
+        body { background: var(--bg); color: var(--text); font-family: 'Press Start 2P', cursive; padding: 40px; font-size: 10px; line-height: 1.6; }
+        h1 { font-size: 18px; border-bottom: 4px solid var(--text); padding-bottom: 20px; margin-bottom: 40px; }
+        
+        .session-card { border: 2px solid var(--text); margin-bottom: 30px; padding: 20px; position: relative; }
+        .session-header { display: flex; justify-content: space-between; background: var(--text); color: var(--bg); padding: 10px; margin: -20px -20px 20px -20px; }
+        
+        .answer-row { border-bottom: 1px solid #333; padding: 10px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .q { color: #888; }
+        .a { color: #fff; text-transform: uppercase; }
+        
+        .delete-btn { background: red; color: white; border: none; padding: 5px 10px; font-family: 'Press Start 2P'; cursor: pointer; font-size: 8px; margin-top: 20px; }
+        .no-data { text-align: center; opacity: 0.5; margin-top: 100px; }
+        
+        .badge { background: #fff; color: #000; padding: 2px 5px; margin-left: 10px; }
+    </style>
+</head>
+<body>
+
+    <h1>DATABASE_ACCESS: [<%= responses.length %>_SESSIONS_FOUND]</h1>
+
+    <% if (responses.length === 0) { %>
+        <div class="no-data">NO_DATA_STRINGS_FOUND_IN_VOID</div>
+    <% } %>
+
+    <% responses.forEach(res => { %>
+        <div class="session-card">
+            <div class="session-header">
+                <span>SESSION_ID: <%= res._id.toString().slice(-6) %></span>
+                <span>DATE: <%= res.syncDate.toLocaleString() %></span>
+            </div>
+
+            <% res.results.forEach((item, index) => { %>
+                <div class="answer-row">
+                    <div class="q"><%= index + 1 %>. <%= item.q %></div>
+                    <div class="a">
+                        <% if (Array.isArray(item.a)) { %>
+                            <%= item.a.join(' | ') %>
+                        <% } else { %>
+                            <%= item.a %>
+                        <% } %>
+                    </div>
+                </div>
+            <% }); %>
+
+            <form action="/delete-response/<%= res._id %>?pass=your_secret_code_123" method="POST" onsubmit="return confirm('DELETE_DATA?')">
+                <button class="delete-btn">ERASE_SESSION</button>
+            </form>
+        </div>
+    <% }); %>
+
+</body>
+</html>
