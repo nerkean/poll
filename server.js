@@ -77,15 +77,34 @@ app.post('/analyze/:id', async (req, res) => {
 
         const userAnswers = data.results.map((item, i) => `${i+1}. ${item.q}: ${item.a}`).join('\n');
 
-        const prompt = `
-            Проанализируй ответы для системы DEEP_SCAN. 
-            Стиль: Киберпанк-психоанализ. Говори как бортовой компьютер.
-            Данные: ${userAnswers}
-            Верни JSON: {"archetype": "...", "description": "...", "sync_level": "..."}
-        `;
+        // Улучшенный промпт
+        const prompt = `Ты — бортовой компьютер системы DEEP_SCAN. 
+        Проанализируй данные:
+        ${userAnswers}
+        
+        Верни ТОЛЬКО JSON объект с полями:
+        "archetype" (название из 2 слов),
+        "description" (психологический портрет, 3 предложения),
+        "sync_level" (процент от 0 до 100%).
+        
+        Никакого лишнего текста, только чистый JSON.`;
 
-        const result = await model.generateContent(prompt);
-        const text = result.response.text().replace(/```json|```/g, "").trim();
+        // Добавляем параметр responseMimeType для принудительного JSON
+        const result = await model.generateContent({
+            contents: [{ role: "user", parts: [{ text: prompt }]}],
+            generationConfig: {
+                responseMimeType: "application/json"
+            }
+        });
+
+        const response = await result.response;
+        let text = response.text().trim();
+
+        // Дополнительная очистка на случай, если ИИ все равно добавил кавычки или текст
+        if (text.includes("```")) {
+            text = text.replace(/```json|```/g, "").trim();
+        }
+
         const analysis = JSON.parse(text);
 
         data.aiAnalysis = analysis;
@@ -93,8 +112,8 @@ app.post('/analyze/:id', async (req, res) => {
 
         res.json({ success: true, analysis });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, error: err.message });
+        console.error("AI_ERROR:", err);
+        res.status(500).json({ success: false, error: "CRITICAL_DECRYPTION_FAILURE" });
     }
 });
 
