@@ -7,7 +7,7 @@ const Response = require('./models/Response');
 
 const app = express();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('✅ База данных: СИНХРОНИЗИРОВАНО'))
