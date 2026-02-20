@@ -66,30 +66,35 @@ app.post('/delete-response/:id', async (req, res) => {
 });
 
 app.post('/analyze/:id', async (req, res) => {
+    const { pass } = req.query;
+    if (pass !== process.env.ADMIN_PASSWORD) {
+        return res.status(403).json({ success: false, error: "ACCESS_DENIED" });
+    }
+
     try {
         const data = await Response.findById(req.params.id);
+        if (!data) return res.status(404).json({ error: "NOT_FOUND" });
+
         const userAnswers = data.results.map((item, i) => `${i+1}. ${item.q}: ${item.a}`).join('\n');
 
         const prompt = `
-            Ты — ИИ системы DEEP_SCAN. Твой стиль: киберпанк, арт-хаус, холодный психоанализ.
+            Проанализируй ответы для системы DEEP_SCAN. 
+            Стиль: Киберпанк-психоанализ. Говори как бортовой компьютер.
             Данные: ${userAnswers}
-            Задание:
-            1. Присвой уникальный "Кибер-Архетип" (2-3 слова).
-            2. Опиши его через призму ответов (3 предложения).
-            3. Укажи уровень синхронизации (0-100%).
-            Ответь строго в формате JSON:
-            {"archetype": "...", "description": "...", "sync_level": "..."}
+            Верни JSON: {"archetype": "...", "description": "...", "sync_level": "..."}
         `;
 
         const result = await model.generateContent(prompt);
-        const analysis = JSON.parse(result.response.text().replace(/```json|```/g, "").trim());
+        const text = result.response.text().replace(/```json|```/g, "").trim();
+        const analysis = JSON.parse(text);
 
         data.aiAnalysis = analysis;
         await data.save();
 
         res.json({ success: true, analysis });
     } catch (err) {
-        res.status(500).json({ success: false, error: "AI_TIMEOUT" });
+        console.error(err);
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 
