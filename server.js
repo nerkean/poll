@@ -2,9 +2,12 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const path = require('path');
+const { GoogleGenerativeAI } = require(@google/generative-ai)
 const Response = require('./models/Response');
 
 const app = express();
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('✅ База данных: СИНХРОНИЗИРОВАНО'))
@@ -60,6 +63,34 @@ app.post('/delete-response/:id', async (req, res) => {
     
     await Response.findByIdAndDelete(req.params.id);
     res.redirect(`/protocol-results?pass=${pass}`);
+});
+
+app.post('/analyze/:id', async (req, res) => {
+    try {
+        const data = await Response.findById(req.params.id);
+        const userAnswers = data.results.map((item, i) => `${i+1}. ${item.q}: ${item.a}`).join('\n');
+
+        const prompt = `
+            Ты — ИИ системы DEEP_SCAN. Твой стиль: киберпанк, арт-хаус, холодный психоанализ.
+            Данные: ${userAnswers}
+            Задание:
+            1. Присвой уникальный "Кибер-Архетип" (2-3 слова).
+            2. Опиши его через призму ответов (3 предложения).
+            3. Укажи уровень синхронизации (0-100%).
+            Ответь строго в формате JSON:
+            {"archetype": "...", "description": "...", "sync_level": "..."}
+        `;
+
+        const result = await model.generateContent(prompt);
+        const analysis = JSON.parse(result.response.text().replace(/```json|```/g, "").trim());
+
+        data.aiAnalysis = analysis;
+        await data.save();
+
+        res.json({ success: true, analysis });
+    } catch (err) {
+        res.status(500).json({ success: false, error: "AI_TIMEOUT" });
+    }
 });
 
 const PORT = process.env.PORT || 3000;
