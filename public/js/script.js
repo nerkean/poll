@@ -163,38 +163,42 @@ function nextStep() {
 async function showFinal() {
     const container = document.getElementById('quiz-content');
     container.innerHTML = `
-        <div class="q-card terminal-style" style="background: var(--text); color: var(--bg);">
-            <div class="glitch-title" data-text="POLL_COMPLETE">POLL_COMPLETE</div>
-            <div class="line-separator" style="background: var(--bg); width: 100%;"></div>
-            <p id="final-txt" style="font-size: 10px; line-height: 2;"></p>
-            <div id="upload-status" style="font-size: 8px; margin-top: 20px; opacity: 0.5;">PREPARING_DATA_TRANSFER...</div>
+        <div class="q-card" style="background: var(--text); color: var(--bg);">
+            <div class="glitch-title" data-text="SCAN_COMPLETE">SCAN_COMPLETE</div>
+            <div id="final-txt" style="font-size: 10px; line-height: 2; margin-bottom: 20px;"></div>
+            <div id="ai-status" style="font-size: 7px; opacity: 0.6; border-top: 1px solid var(--bg); padding-top: 10px;">
+                INITIALIZING_AI_ANALYSIS...
+            </div>
         </div>
     `;
 
     const msg = "Система проанализировала 50 твоих ответов. Результаты сохранены и отправились мне. Спасибо зайка <3";
-    gsap.to("#final-txt", { text: msg, duration: 4, ease: "none" });
+    gsap.to("#final-txt", { text: msg, duration: 3, ease: "none" });
 
     try {
-        const response = await fetch('/submit', {
+        // Шаг 1: Сохраняем
+        const res = await fetch('/submit', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ results: results })
         });
+        const { id } = await res.json();
 
-        const data = await response.json();
+        // Шаг 2: Получаем анализ
+        document.getElementById('ai-status').innerText = "DECRYPTING_ARCHETYPE...";
+        const aiRes = await fetch(`/analyze/${id}`, { method: 'POST' });
+        const aiData = await aiRes.json();
 
-        if (data.success) {
-            document.getElementById('upload-status').innerText = "STATUS: DATA_SENT_SUCCESSFULLY";
-            gsap.to("#upload-status", { color: "#00ff00", duration: 0.5 });
-        } else {
-            throw new Error("Upload failed");
+        if (aiData.success) {
+            const { archetype, description, sync_level } = aiData.analysis;
+            document.getElementById('ai-status').innerHTML = `
+                <div style="color: #fff; font-size: 12px; margin: 10px 0;">ARCHETYPE: ${archetype}</div>
+                <div style="font-size: 9px; margin-bottom: 10px; line-height: 1.4;">${description}</div>
+                <div style="font-size: 10px; letter-spacing: 2px;">SYNC: ${sync_level}</div>
+            `;
         }
-    } catch (err) {
-        console.error("Ошибка при отправке:", err);
-        document.getElementById('upload-status').innerText = "STATUS: TRANSFER_ERROR_BUT_LOCAL_SYNC_OK";
-        document.getElementById('upload-status').style.color = "red";
+    } catch (e) {
+        document.getElementById('ai-status').innerText = "ANALYSIS_ERROR: CONNECTION_LOST";
     }
 }
 
