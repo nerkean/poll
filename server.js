@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const path = require('path');
-const { GoogleGenerativeAI } = require(@google/generative-ai)
+const { GoogleGenerativeAI } = require('@google/generative-ai')
 const Response = require('./models/Response');
 
 const app = express();
