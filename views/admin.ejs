@@ -20,6 +20,12 @@
         .no-data { text-align: center; opacity: 0.5; margin-top: 100px; }
         
         .badge { background: #fff; color: #000; padding: 2px 5px; margin-left: 10px; }
+        .mega-btn-mini { 
+        background: #fff; color: #000; border: none; padding: 10px 20px; 
+        font-family: 'Press Start 2P'; font-size: 8px; cursor: pointer;
+    }
+    .ai-report-container { border-left: 4px solid #00ff00 !important; }
+    details summary:hover { color: #00ff00; }
     </style>
 </head>
 <body>
@@ -31,30 +37,72 @@
     <% } %>
 
     <% responses.forEach(res => { %>
-        <div class="session-card">
-            <div class="session-header">
-                <span>SESSION_ID: <%= res._id.toString().slice(-6) %></span>
-                <span>DATE: <%= res.syncDate.toLocaleString() %></span>
-            </div>
+   <div class="session-card">
+    <div class="session-header">
+        <span>SESSION_ID: <%= res._id.toString().slice(-6) %></span>
+        <span>DATE: <%= res.syncDate.toLocaleString() %></span>
+    </div>
 
-            <% res.results.forEach((item, index) => { %>
-                <div class="answer-row">
-                    <div class="q"><%= index + 1 %>. <%= item.q %></div>
-                    <div class="a">
-                        <% if (Array.isArray(item.a)) { %>
-                            <%= item.a.join(' | ') %>
-                        <% } else { %>
-                            <%= item.a %>
-                        <% } %>
-                    </div>
+    <div id="ai-report-<%= res._id %>" class="ai-report-container" style="margin-bottom: 30px; border: 1px dashed var(--text); padding: 15px; background: rgba(255,255,255,0.05);">
+        <% if (res.aiAnalysis && res.aiAnalysis.archetype) { %>
+            <div style="color: #00ff00; margin-bottom: 10px;">[AI_VERDICT_LOADED]</div>
+            <h2 style="font-size: 14px; color: #fff; margin: 10px 0;">ARCHETYPE: <%= res.aiAnalysis.archetype %></h2>
+            <p style="font-size: 9px; line-height: 1.6; color: #ccc;"><%= res.aiAnalysis.description %></p>
+            <div style="font-size: 12px; margin-top: 10px;">SYNC_LEVEL: <span style="color: #00ff00;"><%= res.aiAnalysis.sync_level %></span></div>
+        <% } else { %>
+            <div id="status-<%= res._id %>" style="opacity: 0.5; font-size: 8px; margin-bottom: 10px;">AI_ANALYSIS_NOT_GENERATED</div>
+            <button onclick="generateAI('<%= res._id %>')" id="btn-<%= res._id %>" class="mega-btn-mini">RUN_DEEP_SCAN</button>
+        <% } %>
+    </div>
+
+    <details>
+        <summary style="cursor: pointer; margin-bottom: 20px; font-size: 8px; opacity: 0.7;">[VIEW_RAW_ANSWERS_LOG]</summary>
+        <% res.results.forEach((item, index) => { %>
+            <div class="answer-row">
+                <div class="q"><%= index + 1 %>. <%= item.q %></div>
+                <div class="a">
+                    <% if (Array.isArray(item.a)) { %>
+                        <%= item.a.join(' | ') %>
+                    <% } else { %>
+                        <%= item.a %>
+                    <% } %>
                 </div>
-            <% }); %>
+            </div>
+        <% }); %>
+    </details>
 
-            <form action="/delete-response/<%= res._id %>?pass=your_secret_code_123" method="POST" onsubmit="return confirm('DELETE_DATA?')">
-                <button class="delete-btn">ERASE_SESSION</button>
-            </form>
-        </div>
+    <div style="display: flex; gap: 20px; margin-top: 20px;">
+        <form action="/delete-response/<%= res._id %>?pass=your_secret_code_123" method="POST" onsubmit="return confirm('DELETE_DATA?')">
+            <button class="delete-btn">ERASE_SESSION</button>
+        </form>
+    </div>
+</div>
     <% }); %>
 
+<script>
+async function generateAI(id) {
+    const btn = document.getElementById('btn-' + id);
+    const status = document.getElementById('status-' + id);
+    const pass = new URLSearchParams(window.location.search).get('pass');
+
+    btn.style.display = 'none';
+    status.innerText = 'PROCCESSING_NEURAL_DATA...';
+
+    try {
+        const res = await fetch(`/analyze/${id}?pass=${pass}`, { method: 'POST' });
+        const data = await res.json();
+        
+        if (data.success) {
+            location.reload(); // Перезагружаем страницу, чтобы увидеть результат
+        } else {
+            alert('AI_ERROR: ' + data.error);
+            btn.style.display = 'block';
+        }
+    } catch (e) {
+        alert('CONNECTION_ERROR');
+        btn.style.display = 'block';
+    }
+}
+</script>
 </body>
 </html>
