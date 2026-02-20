@@ -83,23 +83,32 @@
 async function generateAI(id) {
     const btn = document.getElementById('btn-' + id);
     const status = document.getElementById('status-' + id);
+    const reportDiv = document.getElementById('ai-report-' + id);
     const pass = new URLSearchParams(window.location.search).get('pass');
 
     btn.style.display = 'none';
-    status.innerText = 'PROCCESSING_NEURAL_DATA...';
+    status.innerText = 'NEURAL_NETWORK_SCANNING...';
+    status.style.color = '#00ff00';
 
     try {
         const res = await fetch(`/analyze/${id}?pass=${pass}`, { method: 'POST' });
         const data = await res.json();
         
-        if (data.success) {
-            location.reload(); // Перезагружаем страницу, чтобы увидеть результат
+        if (data.success && data.analysis) {
+            const { archetype, description, sync_level } = data.analysis;
+            // Плавно заменяем содержимое блока
+            reportDiv.innerHTML = `
+                <div style="color: #00ff00; margin-bottom: 10px; animation: blinker 1s linear infinite;">[AI_VERDICT_ESTABLISHED]</div>
+                <h2 style="font-size: 14px; color: #fff; margin: 10px 0;">ARCHETYPE: ${archetype}</h2>
+                <p style="font-size: 9px; line-height: 1.6; color: #ccc;">${description}</p>
+                <div style="font-size: 12px; margin-top: 10px;">SYNC_LEVEL: <span style="color: #00ff00;">${sync_level}</span></div>
+            `;
         } else {
-            alert('AI_ERROR: ' + data.error);
+            status.innerText = 'ERROR: ' + (data.error || 'EMPTY_RESPONSE');
             btn.style.display = 'block';
         }
     } catch (e) {
-        alert('CONNECTION_ERROR');
+        status.innerText = 'CRITICAL_CONNECTION_FAILURE';
         btn.style.display = 'block';
     }
 }
