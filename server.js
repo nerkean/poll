@@ -77,32 +77,28 @@ app.post('/analyze/:id', async (req, res) => {
 
         const userAnswers = data.results.map((item, i) => `${i+1}. ${item.q}: ${item.a}`).join('\n');
 
-        // Улучшенный промпт
-        const prompt = `Ты — бортовой компьютер системы DEEP_SCAN. 
-        Проанализируй данные:
+        const prompt = `Ты — бортовой компьютер системы DEEP_SCAN. Твой стиль: киберпанк, холодный психоанализ.
+        
+        ЗАДАНИЕ: Проанализируй данные ответов и сформируй профиль.
+        ОТВЕТЬ СТРОГО В ФОРМАТЕ JSON. Никакого другого текста, вступлений и пояснений.
+        
+        Данные:
         ${userAnswers}
         
-        Верни ТОЛЬКО JSON объект с полями:
-        "archetype" (название из 2 слов),
-        "description" (психологический портрет, 3 предложения),
-        "sync_level" (процент от 0 до 100%).
-        
-        Никакого лишнего текста, только чистый JSON.`;
+        Формат ответа:
+        {"archetype": "Название из 2 слов", "description": "3 предложения анализа", "sync_level": "0-100%"} `;
 
-        // Добавляем параметр responseMimeType для принудительного JSON
-        const result = await model.generateContent({
-            contents: [{ role: "user", parts: [{ text: prompt }]}],
-            generationConfig: {
-                responseMimeType: "application/json"
-            }
-        });
-
+        // Убираем проблемный generationConfig, оставляем простой вызов
+        const result = await model.generateContent(prompt);
         const response = await result.response;
         let text = response.text().trim();
 
-        // Дополнительная очистка на случай, если ИИ все равно добавил кавычки или текст
-        if (text.includes("```")) {
-            text = text.replace(/```json|```/g, "").trim();
+        // Умная очистка: находим первую { и последнюю }, игнорируя всё остальное
+        const firstBracket = text.indexOf('{');
+        const lastBracket = text.lastIndexOf('}');
+        
+        if (firstBracket !== -1 && lastBracket !== -1) {
+            text = text.substring(firstBracket, lastBracket + 1);
         }
 
         const analysis = JSON.parse(text);
@@ -113,7 +109,7 @@ app.post('/analyze/:id', async (req, res) => {
         res.json({ success: true, analysis });
     } catch (err) {
         console.error("AI_ERROR:", err);
-        res.status(500).json({ success: false, error: "CRITICAL_DECRYPTION_FAILURE" });
+        res.status(500).json({ success: false, error: "ANALYSIS_FAILED: " + err.message });
     }
 });
 
